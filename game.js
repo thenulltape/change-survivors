@@ -3,6 +3,84 @@
 //  Full featured: characters, passives, evolutions, events
 // ============================================================
 
+// ==================== FIREBASE LEADERBOARD ====================
+const firebaseConfig = {
+    apiKey: "AIzaSyAzcjciiPu-kJ6ViLEC_eFI3xYjIkLMp30",
+    authDomain: "change-survivors.firebaseapp.com",
+    projectId: "change-survivors",
+    storageBucket: "change-survivors.firebasestorage.app",
+    messagingSenderId: "250523213464",
+    appId: "1:250523213464:web:e98403babfe45048d7faed",
+    measurementId: "G-FYDJTMHCK3"
+};
+
+let db = null;
+function initFirebase() {
+    try {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+    } catch (e) {
+        console.warn('Firebase init failed:', e);
+    }
+}
+
+async function submitScore(name, scoreData) {
+    if (!db) return;
+    try {
+        await db.collection('leaderboard').add({
+            name: name.substring(0, 12),
+            kills: scoreData.kills,
+            time: scoreData.time,
+            level: scoreData.level,
+            character: scoreData.character,
+            score: scoreData.score,
+            date: new Date().toISOString(),
+        });
+    } catch (e) {
+        console.warn('Score submit failed:', e);
+    }
+}
+
+async function loadLeaderboard() {
+    if (!db) return [];
+    try {
+        const snapshot = await db.collection('leaderboard')
+            .orderBy('score', 'desc')
+            .limit(10)
+            .get();
+        const scores = [];
+        snapshot.forEach(doc => scores.push(doc.data()));
+        return scores;
+    } catch (e) {
+        console.warn('Leaderboard load failed:', e);
+        return [];
+    }
+}
+
+function calculateScore(time, kills, level) {
+    return Math.floor(time * 10 + kills * 5 + level * 50);
+}
+
+function renderLeaderboard(scores, highlightName) {
+    const list = document.getElementById('leaderboard-list');
+    list.innerHTML = '';
+    if (scores.length === 0) {
+        list.innerHTML = '<div class="lb-row"><span style="color:#64748b">No scores yet!</span></div>';
+        return;
+    }
+    scores.forEach((s, i) => {
+        const row = document.createElement('div');
+        row.className = 'lb-row' + (s.name === highlightName ? ' highlight' : '');
+        const timeStr = `${Math.floor(s.time / 60)}:${String(Math.floor(s.time % 60)).padStart(2, '0')}`;
+        row.innerHTML = `
+            <span class="lb-rank">#${i + 1}</span>
+            <span class="lb-name">${s.name}</span>
+            <span class="lb-score">${s.score}pts | ${timeStr} | ☠${s.kills}</span>
+        `;
+        list.appendChild(row);
+    });
+}
+
 // ==================== CONFIG ====================
 const CONFIG = {
     GAME_DURATION: 600,
@@ -284,6 +362,7 @@ function init() {
     canvas = document.getElementById('game-canvas');
     ctx = canvas.getContext('2d');
     resizeCanvas();
+    initFirebase();
     window.addEventListener('resize', resizeCanvas);
     window.addEventListener('keydown', e => {
         game.keys[e.key.toLowerCase()] = true;
@@ -297,6 +376,7 @@ function init() {
     document.getElementById('pause-btn').addEventListener('click', showPauseMenu);
     document.getElementById('resume-btn').addEventListener('click', resumeGame);
     document.getElementById('quit-btn').addEventListener('click', quitToMenu);
+    document.getElementById('submit-score-btn').addEventListener('click', handleScoreSubmit);
     buildCharacterSelect();
 }
 
@@ -1062,15 +1142,43 @@ function endGame(victory) {
     document.getElementById('end-title').textContent = victory ? '🎉 APPROVED!' : '❌ REJECTED';
     document.getElementById('end-subtitle').textContent = victory ? 'All changes processed successfully!' : 'Your change request was denied...';
     const min = Math.floor(game.time / 60); const sec = Math.floor(game.time % 60);
+    const finalScore = calculateScore(game.time, game.kills, game.player.level);
+    game.finalScore = finalScore;
     document.getElementById('end-stats').innerHTML = `
         <div>⏱ Survived: ${min}:${String(sec).padStart(2, '0')}</div>
         <div>☠ Resolved: ${game.kills}</div>
         <div>⬆️ Level: ${game.player.level}</div>
         <div>🔫 Tools: ${game.player.weapons.length}</div>
         <div>🌟 Evolved: ${game.evolvedCount}</div>
-        <div>🏆 Achievements: ${game.unlockedAchievements.length}/${ACHIEVEMENTS.length}</div>
+        <div>⭐ Score: ${finalScore} pts</div>
     `;
+    // Reset submit UI
+    document.getElementById('player-name').value = localStorage.getItem('cs_player_name') || '';
+    document.getElementById('submit-score-btn').disabled = false;
+    document.getElementById('submit-score-btn').textContent = 'Submit Score';
+    // Load leaderboard
+    loadLeaderboard().then(scores => renderLeaderboard(scores, ''));
     screen.classList.remove('hidden');
+}
+
+async function handleScoreSubmit() {
+    const nameInput = document.getElementById('player-name');
+    const btn = document.getElementById('submit-score-btn');
+    const name = nameInput.value.trim();
+    if (!name) { nameInput.focus(); return; }
+    localStorage.setItem('cs_player_name', name);
+    btn.disabled = true;
+    btn.textContent = 'Submitting...';
+    await submitScore(name, {
+        kills: game.kills,
+        time: game.time,
+        level: game.player.level,
+        character: game.player.charId,
+        score: game.finalScore,
+    });
+    btn.textContent = 'Submitted ✓';
+    const scores = await loadLeaderboard();
+    renderLeaderboard(scores, name);
 }
 
 // ==================== RENDERING ====================
@@ -1322,8 +1430,13 @@ function drawParticles() {
 function drawDamageNumbers() {
     for (const d of game.damageNumbers) {
         const alpha = d.life / d.maxLife;
-        ctx.font = `bold ${11 + d.value * 0.05}px Arial`; ctx.textAlign = 'center';
-        ctx.fillStyle = `rgba(255,255,255,${alpha})`; ctx.fillText(d.value, d.x, d.y);
+        ctx.font = `bold ${Math.min(16, 10 + d.value * 0.04)}px "Press Start 2P", monospace`; ctx.textAlign = 'center';
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
+        ctx.strokeText(d.value, d.x, d.y);
+        ctx.fillStyle = '#fff';
+        ctx.fillText(d.value, d.x, d.y);
+        ctx.globalAlpha = 1;
     }
 }
 
@@ -1356,12 +1469,14 @@ function drawNotifications() {
     let y = 100;
     for (const n of game.notifications) {
         const alpha = Math.min(1, n.life / 0.5);
-        ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center';
+        ctx.font = 'bold 20px "Press Start 2P", monospace'; ctx.textAlign = 'center';
         ctx.globalAlpha = alpha;
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 4;
+        ctx.strokeText(n.text, canvas.width / 2, y);
         ctx.fillStyle = n.color;
         ctx.fillText(n.text, canvas.width / 2, y);
         ctx.globalAlpha = 1;
-        y += 24;
+        y += 32;
     }
 }
 
@@ -1369,22 +1484,23 @@ function drawNotifications() {
 function drawSLABar() {
     if (!game.slaTimer) return;
     const sla = game.slaTimer;
-    const barW = 250; const barH = 20;
+    const barW = 280; const barH = 22;
     const x = (canvas.width - barW) / 2; const y = 55;
     const pct = sla.kills / sla.target;
-    const timePct = sla.timeLeft / 15;
 
-    ctx.fillStyle = 'rgba(15,23,42,0.9)'; ctx.fillRect(x - 5, y - 5, barW + 10, barH + 22);
-    ctx.strokeStyle = '#06b6d4'; ctx.lineWidth = 1; ctx.strokeRect(x - 5, y - 5, barW + 10, barH + 22);
-    ctx.font = '10px Arial'; ctx.textAlign = 'center'; ctx.fillStyle = '#06b6d4';
-    ctx.fillText(`SLA: ${sla.kills}/${sla.target} | ${sla.timeLeft.toFixed(1)}s`, canvas.width / 2, y + barH + 12);
+    ctx.fillStyle = 'rgba(15,23,42,0.9)'; ctx.fillRect(x - 5, y - 5, barW + 10, barH + 28);
+    ctx.strokeStyle = '#06b6d4'; ctx.lineWidth = 1; ctx.strokeRect(x - 5, y - 5, barW + 10, barH + 28);
+    ctx.font = '10px "Press Start 2P", monospace'; ctx.textAlign = 'center'; ctx.fillStyle = '#06b6d4';
+    ctx.fillText(`SLA: ${sla.kills}/${sla.target} | ${sla.timeLeft.toFixed(1)}s`, canvas.width / 2, y + barH + 14);
     ctx.fillStyle = '#1e293b'; ctx.fillRect(x, y, barW, barH);
-    ctx.fillStyle = timePct > 0.3 ? '#06b6d4' : '#ef4444'; ctx.fillRect(x, y, barW * pct, barH);
+    ctx.fillStyle = sla.timeLeft > 5 ? '#06b6d4' : '#ef4444'; ctx.fillRect(x, y, barW * pct, barH);
 }
 
 // ==================== COFFEE INDICATOR ====================
 function drawCoffeeIndicator() {
-    ctx.font = '14px Arial'; ctx.textAlign = 'left'; ctx.fillStyle = '#f59e0b';
+    ctx.font = '12px "Press Start 2P", monospace'; ctx.textAlign = 'left'; ctx.fillStyle = '#f59e0b';
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
+    ctx.strokeText(`☕ ${game.coffeeActive.toFixed(1)}s`, 10, canvas.height - 20);
     ctx.fillText(`☕ ${game.coffeeActive.toFixed(1)}s`, 10, canvas.height - 20);
 }
 
