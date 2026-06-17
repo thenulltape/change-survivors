@@ -62,7 +62,12 @@ function calculateScore(time, kills, level) {
 }
 
 function renderLeaderboard(scores, highlightName) {
-    const list = document.getElementById('leaderboard-list');
+    renderLeaderboardTo('leaderboard-list', scores, highlightName);
+}
+
+function renderLeaderboardTo(elementId, scores, highlightName) {
+    const list = document.getElementById(elementId);
+    if (!list) return;
     list.innerHTML = '';
     if (scores.length === 0) {
         list.innerHTML = '<div class="lb-row"><span style="color:#64748b">No scores yet!</span></div>';
@@ -378,6 +383,8 @@ function init() {
     document.getElementById('quit-btn').addEventListener('click', quitToMenu);
     document.getElementById('submit-score-btn').addEventListener('click', handleScoreSubmit);
     buildCharacterSelect();
+    // Load leaderboard on start screen
+    loadLeaderboard().then(scores => renderLeaderboardTo('start-leaderboard-list', scores, ''));
 }
 
 function resizeCanvas() {
