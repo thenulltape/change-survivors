@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Change Survivors - Bullet Heaven</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="game-wrapper">
+        <canvas id="game-canvas"></canvas>
+        <!-- HUD Overlay -->
+        <div id="hud">
+            <div id="hud-left">
+                <div id="hp-bar-container">
+                    <div id="hp-bar"></div>
+                    <span id="hp-text">100/100</span>
+                </div>
+                <div id="xp-bar-container">
+                    <div id="xp-bar"></div>
+                    <span id="xp-text">Lv.1</span>
+                </div>
+            </div>
+            <div id="hud-center">
+                <span id="timer">10:00</span>
+                <span id="kill-count">☠ 0</span>
+            </div>
+            <div id="hud-right">
+                <button id="pause-btn" class="hidden">⏸</button>
+                <div id="weapon-icons"></div>
+            </div>
+        </div>
+        <!-- Pause Modal -->
+        <div id="pause-modal" class="modal hidden">
+            <h2>⏸ PAUSED</h2>
+            <p class="subtitle">Take a break, the backlog can wait.</p>
+            <button id="resume-btn">▶ Resume</button>
+            <button id="quit-btn" class="quit-btn">✕ Quit to Menu</button>
+        </div>
+        <!-- Level Up Modal -->
+        <div id="level-up-modal" class="modal hidden">
+            <h2>⬆️ LEVEL UP!</h2>
+            <p>Choose an upgrade:</p>
+            <div id="upgrade-choices"></div>
+        </div>
+        <!-- Start Screen with Character Select -->
+        <div id="start-screen" class="modal">
+            <img id="game-logo" src="assets/logo.png" alt="Change Survivors">
+            <p class="subtitle">Survive the endless stream of Change Requests and Approvals</p>
+            <div class="flavor">Your tools fire automatically at nearby threats.<br>Survive 10 minutes to process all changes.</div>
+            <h3 class="select-title">Select your role:</h3>
+            <div id="character-choices"></div>
+            <div class="controls-info">
+                <strong>Controls:</strong> WASD or Arrow Keys to move | Everything else is automatic
+            </div>
+        </div>
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="modal hidden">
+            <h1 id="end-title">❌ REJECTED</h1>
+            <p id="end-subtitle">Your change request was denied...</p>
+            <div id="end-stats"></div>
+            <button id="restart-btn">Resubmit</button>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>

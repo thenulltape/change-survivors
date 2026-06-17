@@ -1,0 +1,148 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    background: #0a0a1a;
+    overflow: hidden;
+    height: 100vh;
+    font-family: 'Press Start 2P', 'Segoe UI', Tahoma, sans-serif;
+    color: #e0e0e0;
+}
+
+#game-wrapper { position: relative; width: 100vw; height: 100vh; }
+#game-canvas { display: block; width: 100%; height: 100%; background: #111827; }
+
+/* HUD */
+#hud {
+    position: absolute; top: 0; left: 0; right: 0;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding: 10px 16px; pointer-events: none; z-index: 10;
+}
+#hud-left { display: flex; flex-direction: column; gap: 4px; min-width: 220px; }
+#hp-bar-container, #xp-bar-container {
+    position: relative; height: 20px; background: #1e293b;
+    border-radius: 10px; border: 1px solid #334155; overflow: hidden;
+}
+#hp-bar { height: 100%; width: 100%; background: linear-gradient(90deg, #ef4444, #dc2626); border-radius: 10px; transition: width 0.3s; }
+#xp-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #3b82f6, #6366f1); border-radius: 10px; transition: width 0.2s; }
+#hp-bar-container span, #xp-bar-container span {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    font-size: 11px; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+#hud-center { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+#timer { font-size: 16px; font-weight: bold; color: #f59e0b; text-shadow: 0 0 10px rgba(245,158,11,0.5); }
+#kill-count { font-size: 10px; color: #94a3b8; }
+#hud-right { display: flex; gap: 4px; }
+#weapon-icons { display: flex; gap: 6px; flex-wrap: wrap; max-width: 200px; }
+.weapon-icon {
+    width: 36px; height: 36px; background: #1e293b; border: 2px solid #475569;
+    border-radius: 6px; display: flex; align-items: center; justify-content: center;
+    font-size: 16px; position: relative;
+}
+.weapon-icon.evolved { border-color: #fbbf24; background: #3d2e0a; }
+.weapon-icon .weapon-level {
+    position: absolute; bottom: -2px; right: -2px; background: #f59e0b; color: #000;
+    font-size: 9px; font-weight: bold; width: 14px; height: 14px;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+}
+
+/* Modals */
+.modal {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.92); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; z-index: 100; gap: 10px;
+}
+.modal.hidden { display: none; }
+.modal h1 { font-size: 28px; color: #f59e0b; text-shadow: 0 0 20px rgba(245,158,11,0.5); letter-spacing: -1px; }
+.modal h2 { font-size: 20px; color: #f59e0b; }
+.modal h3 { color: #94a3b8; font-size: 10px; margin-top: 10px; }
+.modal .subtitle { font-size: 10px; color: #94a3b8; max-width: 500px; text-align: center; line-height: 1.8; }
+.modal .flavor { font-size: 9px; color: #64748b; text-align: center; max-width: 420px; line-height: 2; }
+.select-title { letter-spacing: 1px; text-transform: uppercase; }
+
+/* Logo image */
+#game-logo {
+    max-width: 420px;
+    width: 80%;
+    height: auto;
+    image-rendering: pixelated;
+    margin-bottom: 8px;
+}
+.modal button {
+    padding: 12px 24px; font-size: 11px; font-weight: bold;
+    background: #f59e0b; color: #000; border: none; border-radius: 8px;
+    cursor: pointer; transition: all 0.2s; pointer-events: all; margin-top: 10px;
+    font-family: 'Press Start 2P', monospace;
+}
+.modal button:hover { background: #d97706; transform: scale(1.05); }
+.controls-info { margin-top: 16px; font-size: 12px; color: #64748b; }
+
+/* Character Select */
+#character-choices { display: flex; gap: 12px; margin-top: 8px; pointer-events: all; flex-wrap: wrap; justify-content: center; }
+.char-card {
+    display: flex; align-items: center; gap: 12px;
+    background: #1e293b; border: 2px solid #475569; border-radius: 10px;
+    padding: 14px 18px; min-width: 240px; cursor: pointer; transition: all 0.2s;
+}
+.char-card:hover { border-color: #f59e0b; background: #2d3748; transform: translateY(-2px); }
+.char-emoji { font-size: 36px; }
+.char-info { flex: 1; }
+.char-name { font-weight: bold; font-size: 11px; color: #fff; }
+.char-desc { font-size: 8px; color: #94a3b8; margin-top: 4px; line-height: 1.6; }
+.char-stats { font-size: 8px; color: #64748b; margin-top: 4px; }
+
+/* Level Up Choices */
+#upgrade-choices { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; pointer-events: all; max-height: 60vh; overflow-y: auto; }
+.upgrade-card {
+    display: flex; align-items: center; gap: 14px;
+    background: #1e293b; border: 2px solid #475569; border-radius: 10px;
+    padding: 12px 18px; min-width: 340px; cursor: pointer; transition: all 0.2s;
+}
+.upgrade-card:hover { border-color: #f59e0b; background: #2d3748; transform: translateX(4px); }
+.upgrade-card .upgrade-icon {
+    font-size: 24px; width: 40px; height: 40px; display: flex;
+    align-items: center; justify-content: center; background: #334155;
+    border-radius: 8px; flex-shrink: 0;
+}
+.upgrade-card .upgrade-info { flex: 1; }
+.upgrade-card .upgrade-name { font-weight: bold; font-size: 10px; color: #fff; }
+.upgrade-card .upgrade-desc { font-size: 8px; color: #94a3b8; margin-top: 4px; line-height: 1.6; }
+.upgrade-card .upgrade-level { font-size: 8px; color: #f59e0b; }
+
+/* Game Over Stats */
+#end-stats { display: flex; flex-direction: column; gap: 5px; margin: 10px 0; font-size: 14px; color: #94a3b8; text-align: center; }
+
+
+/* Pause Button */
+#pause-btn {
+    background: #334155;
+    border: 2px solid #475569;
+    color: #e0e0e0;
+    font-size: 18px;
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    cursor: pointer;
+    pointer-events: all;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    margin-right: 8px;
+}
+#pause-btn:hover { background: #475569; border-color: #f59e0b; }
+#pause-btn.hidden { display: none; }
+
+/* Pause Modal */
+#pause-modal button { margin-top: 8px; min-width: 200px; }
+.quit-btn { background: #475569 !important; color: #e0e0e0 !important; }
+.quit-btn:hover { background: #ef4444 !important; color: #fff !important; }
+
+/* Character sprites in select */
+.char-sprite {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+    image-rendering: pixelated;
+}
