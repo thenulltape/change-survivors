@@ -42,7 +42,7 @@ async function submitScore(name, scoreData) {
 }
 
 async function loadLeaderboard() {
-    if (!db) return [];
+    if (!db) { console.warn('Firestore not initialized'); return []; }
     try {
         const snapshot = await db.collection('leaderboard')
             .orderBy('score', 'desc')
@@ -69,8 +69,8 @@ function renderLeaderboardTo(elementId, scores, highlightName) {
     const list = document.getElementById(elementId);
     if (!list) return;
     list.innerHTML = '';
-    if (scores.length === 0) {
-        list.innerHTML = '<div class="lb-row"><span style="color:#64748b">No scores yet!</span></div>';
+    if (!scores || scores.length === 0) {
+        list.innerHTML = '<div class="lb-row"><span class="lb-name" style="color:#94a3b8;text-align:center;width:100%">Play a game to set the first score!</span></div>';
         return;
     }
     scores.forEach((s, i) => {
